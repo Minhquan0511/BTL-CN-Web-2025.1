@@ -35,7 +35,7 @@
   },
   "version": "1.0.0",
   "description": "Full-stack codebase for EduLearn, split into dedicated `frontend/` and `backend/` workspaces, with shared documentation under `docs/`.",
-  "main": "index.js",
+  "main": "backend/dist/server.js",
   "directories": {
     "doc": "docs"
   },
