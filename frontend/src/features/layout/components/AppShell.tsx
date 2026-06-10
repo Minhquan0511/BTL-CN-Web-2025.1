@@ -17,7 +17,6 @@ import { ApproveCoursesPage } from '@/pages/ApproveCoursesPage';
 import { CreateCoursePage } from '@/pages/CreateCoursePage';
 import { CourseDashboardPage } from '@/pages/CourseDashboardPage';
 import { LearningPage } from '@/pages/LearningPage';
-import { QuizPage } from '@/pages/QuizPage';
 import { ManageTagsPage } from '@/pages/ManageTagsPage';
 import Lottie from 'lottie-react';
 import avatarFrameAnimation from '@/components/christmas/Entri Christmas.json';
@@ -41,9 +40,10 @@ interface AppShellProps {
     enrollmentRequests: any[];
     currentRole: string;
     unreadCount: number;
+    isHydrating?: boolean;
   };
   actions: {
-    navigateTo: (page: any, course?: any) => void;
+    navigateTo: (page: any, data?: { course?: any, user?: any, tag?: any }) => void;
     handleLogout: () => void;
     handleUpdateUser: (user: any) => void;
     setSelectedCourse: (course: any) => void;
@@ -77,7 +77,10 @@ export function AppShell({ state, actions }: AppShellProps) {
     enrollmentRequests,
     currentRole,
     unreadCount,
+    isHydrating,
   } = state;
+
+
 
   const {
     navigateTo,
@@ -226,86 +229,86 @@ export function AppShell({ state, actions }: AppShellProps) {
                     </div>
                     {currentRole === 'admin'
                       ? (notifications.filter(n => n.type === 'course_pending_review').length > 0 ? (
-                          <ScrollArea className="h-[400px]">
-                            <div className="divide-y">
-                              {notifications.filter(n => n.type === 'course_pending_review').map(notification => {
-                                const isRead = notification.read || readSet.has(String(notification.id));
-                                return (
-                                  <button
-                                    key={notification.id}
-                                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${!isRead ? 'bg-blue-50/70' : 'bg-white'}`}
-                                    onClick={() => {
-                                      if (!isRead) setReadSet(prev => new Set(prev).add(String(notification.id)));
-                                      handleNotificationClick(notification);
-                                      setShowNotifications(false);
-                                      setIsNotificationsPinned(false);
-                                    }}
-                                  >
-                                    <div className="flex gap-3">
-                                      <div className="flex-shrink-0 mt-1 text-yellow-500"><Bell className="w-5 h-5" /></div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className={`text-sm ${!isRead ? 'font-medium' : ''}`}>{notification.title}</p>
-                                        <p className="text-sm text-gray-600 line-clamp-2">{notification.message}</p>
-                                      </div>
+                        <ScrollArea className="h-[400px]">
+                          <div className="divide-y">
+                            {notifications.filter(n => n.type === 'course_pending_review').map(notification => {
+                              const isRead = notification.read || readSet.has(String(notification.id));
+                              return (
+                                <button
+                                  key={notification.id}
+                                  className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${!isRead ? 'bg-blue-50/70' : 'bg-white'}`}
+                                  onClick={() => {
+                                    if (!isRead) setReadSet(prev => new Set(prev).add(String(notification.id)));
+                                    handleNotificationClick(notification);
+                                    setShowNotifications(false);
+                                    setIsNotificationsPinned(false);
+                                  }}
+                                >
+                                  <div className="flex gap-3">
+                                    <div className="flex-shrink-0 mt-1 text-yellow-500"><Bell className="w-5 h-5" /></div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className={`text-sm ${!isRead ? 'font-medium' : ''}`}>{notification.title}</p>
+                                      <p className="text-sm text-gray-600 line-clamp-2">{notification.message}</p>
                                     </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </ScrollArea>
-                        ) : <div className="p-12 text-center text-gray-500"><p>Chưa có thông báo khoá học cần duyệt</p></div>)
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </ScrollArea>
+                      ) : <div className="p-12 text-center text-gray-500"><p>Chưa có thông báo khoá học cần duyệt</p></div>)
                       : (notifications.length > 0 ? (
-                          <ScrollArea className="h-[400px]">
-                            <div className="divide-y">
-                              {notifications.map(notification => {
-                                let Icon = Bell;
-                                let color = 'text-gray-400';
-                                switch (notification.type) {
-                                  case 'course_approved':
-                                    Icon = CheckCircle;
-                                    color = 'text-green-500';
-                                    break;
-                                  case 'course_rejected':
-                                    Icon = AlertCircle;
-                                    color = 'text-red-500';
-                                    break;
-                                  case 'student_joined':
-                                    Icon = UserPlus;
-                                    color = 'text-blue-500';
-                                    break;
-                                  case 'course_completed':
-                                    Icon = Award;
-                                    color = 'text-yellow-500';
-                                    break;
-                                  default:
-                                    Icon = Bell;
-                                    color = 'text-gray-400';
-                                }
-                                const isRead = notification.read || readSet.has(String(notification.id));
-                                return (
-                                  <button
-                                    key={notification.id}
-                                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${!isRead ? 'bg-blue-50/70' : 'bg-white'}`}
-                                    onClick={() => {
-                                      if (!isRead) setReadSet(prev => new Set(prev).add(String(notification.id)));
-                                      handleNotificationClick(notification);
-                                      setShowNotifications(false);
-                                      setIsNotificationsPinned(false);
-                                    }}
-                                  >
-                                    <div className="flex gap-3">
-                                      <div className={`flex-shrink-0 mt-1 ${color}`}><Icon className="w-5 h-5" /></div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className={`text-sm ${!isRead ? 'font-medium' : ''}`}>{notification.title}</p>
-                                        <p className="text-sm text-gray-600 line-clamp-2">{notification.message}</p>
-                                      </div>
+                        <ScrollArea className="h-[400px]">
+                          <div className="divide-y">
+                            {notifications.map(notification => {
+                              let Icon = Bell;
+                              let color = 'text-gray-400';
+                              switch (notification.type) {
+                                case 'course_approved':
+                                  Icon = CheckCircle;
+                                  color = 'text-green-500';
+                                  break;
+                                case 'course_rejected':
+                                  Icon = AlertCircle;
+                                  color = 'text-red-500';
+                                  break;
+                                case 'student_joined':
+                                  Icon = UserPlus;
+                                  color = 'text-blue-500';
+                                  break;
+                                case 'course_completed':
+                                  Icon = Award;
+                                  color = 'text-yellow-500';
+                                  break;
+                                default:
+                                  Icon = Bell;
+                                  color = 'text-gray-400';
+                              }
+                              const isRead = notification.read || readSet.has(String(notification.id));
+                              return (
+                                <button
+                                  key={notification.id}
+                                  className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${!isRead ? 'bg-blue-50/70' : 'bg-white'}`}
+                                  onClick={() => {
+                                    if (!isRead) setReadSet(prev => new Set(prev).add(String(notification.id)));
+                                    handleNotificationClick(notification);
+                                    setShowNotifications(false);
+                                    setIsNotificationsPinned(false);
+                                  }}
+                                >
+                                  <div className="flex gap-3">
+                                    <div className={`flex-shrink-0 mt-1 ${color}`}><Icon className="w-5 h-5" /></div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className={`text-sm ${!isRead ? 'font-medium' : ''}`}>{notification.title}</p>
+                                      <p className="text-sm text-gray-600 line-clamp-2">{notification.message}</p>
                                     </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </ScrollArea>
-                        ) : <div className="p-12 text-center text-gray-500"><p>Chưa có thông báo nào</p></div>)}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </ScrollArea>
+                      ) : <div className="p-12 text-center text-gray-500"><p>Chưa có thông báo nào</p></div>)}
                   </PopoverContent>
                 </Popover>
               </div>
@@ -402,13 +405,15 @@ export function AppShell({ state, actions }: AppShellProps) {
                   </button>
                 )}
 
-                <button
-                  onClick={() => { navigateTo('my-courses'); setSidebarOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#1E88E5]/10 rounded-lg transition-colors"
-                >
-                  <BookOpen className="w-5 h-5 text-[#1E88E5]" />
-                  <span>Khóa học của tôi</span>
-                </button>
+                {currentRole !== 'admin' && (
+                  <button
+                    onClick={() => { navigateTo('my-courses'); setSidebarOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#1E88E5]/10 rounded-lg transition-colors"
+                  >
+                    <BookOpen className="w-5 h-5 text-[#1E88E5]" />
+                    <span>Khóa học của tôi</span>
+                  </button>
+                )}
 
                 {currentRole !== 'admin' && (
                   <button
@@ -444,46 +449,55 @@ export function AppShell({ state, actions }: AppShellProps) {
       }
 
       <main className="page-transition flex-1">
-        {currentPage === 'home' && <HomePage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} setSelectedTag={setSelectedTag} currentUser={currentUser} />}
-        {currentPage === 'my-courses' && <MyCoursesPage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} currentUser={currentUser!} />}
-        {currentPage === 'explore' && <ExplorePage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} currentUser={currentUser} />}
-        {currentPage === 'course-detail' && selectedCourse && (
-          <CourseDetailPage
-            course={selectedCourse}
-            navigateTo={navigateTo}
-            setSelectedUser={setSelectedUser}
-            setSelectedTag={setSelectedTag}
-            currentUser={currentUser}
-            isOwner={isOwner(selectedCourse)}
-            canAccess={selectedCourse.overrideAccess === true ? true : canAccessCourse(selectedCourse)}
-            enrollmentRequests={enrollmentRequests}
-            onEnrollRequest={handleEnrollRequest}
-          />
-        )}
-        {currentPage === 'tag-detail' && <TagDetailPage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} currentUser={currentUser} selectedTag={selectedTag} />}
-        {currentPage === 'learning' && <LearningPage course={selectedCourse} navigateTo={navigateTo} />}
-        {currentPage === 'create-course' && <CreateCoursePage navigateTo={navigateTo} currentUser={currentUser!} />}
-        {currentPage === 'ai-learning-path' && <AILearningPathPage navigateTo={navigateTo} currentUser={currentUser} />}
-        {currentPage === 'course-dashboard' && <CourseDashboardPage course={selectedCourse} navigateTo={navigateTo} currentUser={currentUser!} enrollmentRequests={enrollmentRequests} onApproveRequest={handleApproveRequest} onRejectRequest={handleRejectRequest} />}
-        {/* Admin Pages - Protected */}
-        {currentUser?.role === 'admin' && (
-          <>
-            {currentPage === 'admin-dashboard' && <AdminDashboardPage navigateTo={navigateTo} />}
-            {currentPage === 'approve-courses' && <ApproveCoursesPage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} />}
-            {currentPage === 'manage-courses' && <ManageCoursesPage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} />}
-            {currentPage === 'manage-users' && <ManageUsersPage navigateTo={navigateTo} setSelectedUser={setSelectedUser} />}
-            {currentPage === 'manage-tags' && <ManageTagsPage navigateTo={navigateTo} setSelectedTag={setSelectedTag} />}
-          </>
+        {/* Hydration Loading State */}
+        {state.isHydrating && (
+          <div className="flex items-center justify-center h-[50vh]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E88E5]" />
+          </div>
         )}
 
-        {/* Public/Shared Pages */}
-        {currentPage === 'user-detail' && <UserDetailPage user={selectedUser} navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} />}
-        {currentPage === 'account-settings' && currentUser && (
-          <AccountSettingsPage
-            user={currentUser}
-            navigateTo={navigateTo}
-            onUpdateUser={actions.handleUpdateUser} // THÊM DÒNG NÀY VÀO
-          />
+        {!state.isHydrating && (
+          <>
+            {currentPage === 'home' && <HomePage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} setSelectedTag={setSelectedTag} currentUser={currentUser} />}
+            {currentPage === 'my-courses' && <MyCoursesPage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} currentUser={currentUser!} />}
+            {currentPage === 'explore' && <ExplorePage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} currentUser={currentUser} />}
+            {currentPage === 'course-detail' && selectedCourse && (
+              <CourseDetailPage
+                course={selectedCourse}
+                navigateTo={navigateTo}
+                setSelectedUser={setSelectedUser}
+                setSelectedTag={setSelectedTag}
+                currentUser={currentUser}
+                isOwner={isOwner(selectedCourse)}
+                canAccess={selectedCourse.overrideAccess === true ? true : canAccessCourse(selectedCourse)}
+              />
+            )}
+            {currentPage === 'tag-detail' && <TagDetailPage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} currentUser={currentUser} selectedTag={selectedTag} />}
+            {currentPage === 'learning' && <LearningPage course={selectedCourse} navigateTo={navigateTo} />}
+            {currentPage === 'create-course' && <CreateCoursePage navigateTo={navigateTo} currentUser={currentUser!} />}
+            {currentPage === 'ai-learning-path' && <AILearningPathPage navigateTo={navigateTo} currentUser={currentUser} />}
+            {currentPage === 'course-dashboard' && <CourseDashboardPage course={selectedCourse} navigateTo={navigateTo} currentUser={currentUser!} enrollmentRequests={enrollmentRequests} onApproveRequest={handleApproveRequest} onRejectRequest={handleRejectRequest} />}
+            {/* Admin Pages - Protected */}
+            {currentUser?.role === 'admin' && (
+              <>
+                {currentPage === 'admin-dashboard' && <AdminDashboardPage navigateTo={navigateTo} />}
+                {currentPage === 'approve-courses' && <ApproveCoursesPage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} />}
+                {currentPage === 'manage-courses' && <ManageCoursesPage navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} />}
+                {currentPage === 'manage-users' && <ManageUsersPage navigateTo={navigateTo} setSelectedUser={setSelectedUser} />}
+                {currentPage === 'manage-tags' && <ManageTagsPage navigateTo={navigateTo} setSelectedTag={setSelectedTag} />}
+              </>
+            )}
+
+            {/* Public/Shared Pages */}
+            {currentPage === 'user-detail' && <UserDetailPage user={selectedUser} navigateTo={navigateTo} setSelectedCourse={setSelectedCourse} />}
+            {currentPage === 'account-settings' && currentUser && (
+              <AccountSettingsPage
+                user={currentUser}
+                navigateTo={navigateTo}
+                onUpdateUser={actions.handleUpdateUser} // THÊM DÒNG NÀY VÀO
+              />
+            )}
+          </>
         )}
       </main>
 

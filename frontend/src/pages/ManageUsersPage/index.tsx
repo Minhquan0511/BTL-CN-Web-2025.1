@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { usersAPI } from '@/services/api';
@@ -14,7 +14,7 @@ import { DeleteConfirmDialog } from '@/components/shared/DeleteConfirmDialog';
 import { SearchFilterCard } from '@/components/shared/SearchFilterCard';
 
 interface ManageUsersPageProps {
-  navigateTo: (page: Page) => void;
+  navigateTo: (page: Page, data?: any) => void;
   setSelectedUser: (user: User) => void;
 }
 
@@ -86,10 +86,6 @@ export function ManageUsersPage({ navigateTo, setSelectedUser }: ManageUsersPage
         icon={<Users className="w-8 h-8" />}
         title="Quản lý người dùng"
         description="Xem và quản lý tất cả người dùng trong hệ thống"
-        backButton={{
-          label: 'Quay về Dashboard',
-          onClick: () => navigateTo('admin-dashboard'),
-        }}
       />
 
       {/* Search */}
@@ -107,7 +103,7 @@ export function ManageUsersPage({ navigateTo, setSelectedUser }: ManageUsersPage
             className="group overflow-hidden border-none shadow-sm hover:shadow-xl transition-all duration-300 bg-white cursor-pointer gap-0"
             onClick={() => {
               setSelectedUser(user);
-              navigateTo('user-detail');
+              navigateTo('user-detail', { user });
             }}
           >
             <CardContent className="p-0">
@@ -115,14 +111,10 @@ export function ManageUsersPage({ navigateTo, setSelectedUser }: ManageUsersPage
                 {/* Avatar Section */}
                 <div className="relative">
                   <Avatar className="w-12 h-12 ring-2 ring-gray-100 group-hover:ring-[#1E88E5]/50 transition-all">
-                    <img
-                      src={user.avatar_url || '/placeholder-user.jpg'}
-                      alt={user.full_name || 'avatar'}
-                      className="w-12 h-12 object-cover rounded-full"
-                      onError={e => {
-                        (e.target as HTMLImageElement).src = '/placeholder-user.jpg';
-                      }}
-                    />
+                    <AvatarImage src={user.avatar_url} className="object-cover" />
+                    <AvatarFallback className="bg-gradient-to-br from-[#1E88E5] to-[#0D47A1] text-white font-bold">
+                      {user.full_name?.charAt(0) || 'U'}
+                    </AvatarFallback>
                   </Avatar>
                   {user.status === 'active' && (
                     <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
@@ -198,14 +190,10 @@ export function ManageUsersPage({ navigateTo, setSelectedUser }: ManageUsersPage
         {userToDelete && (
           <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
             <Avatar className="w-12 h-12">
-              <img
-                src={userToDelete?.avatar_url || '/placeholder-user.jpg'}
-                alt={userToDelete?.full_name || 'avatar'}
-                className="w-12 h-12 object-cover rounded-full"
-                onError={e => {
-                  (e.target as HTMLImageElement).src = '/placeholder-user.jpg';
-                }}
-              />
+              <AvatarImage src={userToDelete?.avatar_url} className="object-cover" />
+              <AvatarFallback className="bg-gradient-to-br from-[#1E88E5] to-[#0D47A1] text-white font-bold">
+                {userToDelete?.full_name?.charAt(0) || 'U'}
+              </AvatarFallback>
             </Avatar>
             <div>
               <p className="font-medium">{userToDelete.full_name}</p>

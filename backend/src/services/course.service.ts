@@ -37,6 +37,7 @@ interface ExtendedCourseFilters extends CourseFilters {
   isAdmin?: boolean;
   owner_id?: string;
   tag?: string;
+  sort?: 'newest' | 'popular' | 'rating';
 }
 
 export const courseService = {
@@ -57,9 +58,10 @@ export const courseService = {
       const offset = limit > 0 ? (page - 1) * limit : 0;
 
       // Nếu truyền owner_id thì trả về tất cả khoá học của owner đó (bỏ filter status/visibility)
+      // Use supabaseAdmin to bypass RLS and get owner profile
       let query;
       if (filters.owner_id) {
-        query = supabase
+        query = supabaseAdmin
           .from('courses')
           .select(`
             *,
@@ -138,14 +140,12 @@ export const courseService = {
           .select('course_id, status')
           .in('course_id', courseIds)
           .eq('status', 'approved');
-        console.log('EnrollmentsData:', enrollmentsData);
         if (!enrollmentsError && Array.isArray(enrollmentsData)) {
           // Đếm số học viên cho từng khoá học
           studentsMap = enrollmentsData.reduce((acc: Record<string, number>, e: any) => {
             acc[e.course_id] = (acc[e.course_id] || 0) + 1;
             return acc;
           }, {});
-          console.log('StudentsMap:', studentsMap);
         }
       }
 
@@ -177,7 +177,7 @@ export const courseService = {
       // Apply sorting based on filters.sort parameter
       const sortBy = filters.sort || 'newest';
       let sortedCourses = [...courses];
-      
+
       switch (sortBy) {
         case 'popular':
           // Sort by number of students (descending)
@@ -194,7 +194,7 @@ export const courseService = {
       }
 
       // Apply pagination AFTER sorting
-      const paginatedCourses = limit > 0 
+      const paginatedCourses = limit > 0
         ? sortedCourses.slice(offset, offset + limit)
         : sortedCourses;
 

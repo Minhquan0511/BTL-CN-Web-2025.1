@@ -21,17 +21,27 @@ export const authenticate = async (
   next: NextFunction
 ) => {
   try {
+    // Try to get token from Authorization header first
+    let token = null;
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if ((req.cookies as any)?.edulearn_auth_token) {
+      // Fallback to reading from cookie if no Authorization header
+      token = (req.cookies as any).edulearn_auth_token;
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required',
       });
     }
-    const token = authHeader.substring(7);
 
-    // Thử xác thực bằng JWT admin trước
+    // Try to verify as admin JWT first
     const adminPayload = verifyAdminToken(token) as { id: string; email: string; role: string } | null;
+
     if (adminPayload && typeof adminPayload === 'object' && adminPayload.role === 'admin') {
       req.user = {
         id: adminPayload.id,
@@ -39,17 +49,28 @@ export const authenticate = async (
         role: 'admin',
         raw_user_meta_data: {},
       };
+
       return next();
     }
 
-    // Nếu không phải JWT admin thì xác thực Supabase như cũ
+    // Verify with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) {
+
+    if (error) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired token',
+        debug: error.message,
+      });
+    }
+
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Invalid or expired token',
       });
     }
+
     req.user = {
       id: user.id,
       email: user.email!,
@@ -58,7 +79,7 @@ export const authenticate = async (
     };
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('[Auth] ERROR:', error);
     return res.status(401).json({
       success: false,
       message: 'Authentication failed',

@@ -11,6 +11,19 @@ if (apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
+// Helper to get model config with optional proxy Base URL
+const getModel = (modelName: string) => {
+  const requestOptions: any = {};
+
+  if (process.env.GEMINI_API_BASE_URL) {
+    requestOptions.baseUrl = process.env.GEMINI_API_BASE_URL;
+  }
+
+  return genAI.getGenerativeModel({
+    model: modelName,
+  }, requestOptions);
+};
+
 interface CourseOutline {
   title: string;
   description: string;
@@ -46,7 +59,7 @@ export const aiService = {
    * Generate a complete course outline using Gemini AI
    */
   generateCourseOutline: async (input: GenerateCourseInput): Promise<CourseOutline> => {
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+    const model = getModel('gemini-3-flash-preview');
 
     const levelText = {
       beginner: 'người mới bắt đầu, chưa có kinh nghiệm',
@@ -110,8 +123,6 @@ Trả về JSON theo format sau (KHÔNG có markdown code block, chỉ JSON thu�
       const response = await result.response;
       let text = response.text();
 
-      console.log('Raw AI response length:', text.length);
-      console.log('Raw AI response preview:', text.substring(0, 200));
 
       // Clean up response - remove markdown code blocks if present
       text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -122,7 +133,7 @@ Trả về JSON theo format sau (KHÔNG có markdown code block, chỉ JSON thu�
 
       if (startIndex === -1 || endIndex === -1) {
         console.error('No JSON object found in response');
-        throw new Error('AI response does not contain valid JSON object');
+        throw new Error('AI_RESPONSE_INVALID');
       }
 
       text = text.substring(startIndex, endIndex + 1);
@@ -136,14 +147,11 @@ Trả về JSON theo format sau (KHÔNG có markdown code block, chỉ JSON thu�
           .replace(/[\x00-\x1F\x7F]/g, '');
       });
 
-      console.log('Sanitized JSON length:', text.length);
-
       let courseOutline: CourseOutline;
       try {
         courseOutline = JSON.parse(text);
       } catch (parseError: any) {
-        console.log('JSON parse failed, attempting repair...');
-        console.log('Parse error position:', parseError.message);
+        // JSON parse failed, attempting repair
 
         let repaired = text;
 
@@ -187,7 +195,6 @@ Trả về JSON theo format sau (KHÔNG có markdown code block, chỉ JSON thu�
 
         try {
           courseOutline = JSON.parse(repaired);
-          console.log('JSON repair successful!');
         } catch (repairError) {
           console.error('JSON repair failed, trying fallback...');
           try {
@@ -195,7 +202,6 @@ Trả về JSON theo format sau (KHÔNG có markdown code block, chỉ JSON thu�
             if (sectionsMatch) {
               const partialJson = repaired.substring(0, repaired.indexOf(sectionsMatch[0]) + sectionsMatch[0].length);
               courseOutline = JSON.parse(partialJson);
-              console.log('Fallback JSON extraction successful!');
             } else {
               throw parseError; // Throw original error
             }
@@ -209,7 +215,8 @@ Trả về JSON theo format sau (KHÔNG có markdown code block, chỉ JSON thu�
       return courseOutline;
     } catch (error: any) {
       console.error('AI generation error:', error);
-      throw new Error(`Failed to generate course outline: ${error.message}`);
+      // Throw user-friendly error code instead of technical message
+      throw new Error('AI_GENERATION_FAILED');
     }
   },
 
@@ -217,7 +224,7 @@ Trả về JSON theo format sau (KHÔNG có markdown code block, chỉ JSON thu�
    * Generate quiz questions for a specific topic
    */
   generateQuizQuestions: async (topic: string, difficulty: string, count: number = 5) => {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = getModel('gemini-3-flash-preview');
 
     const prompt = `Tạo ${count} câu hỏi trắc nghiệm về "${topic}" với độ khó "${difficulty}".
     
@@ -249,7 +256,7 @@ Trả về JSON array (KHÔNG có markdown code block):
       return JSON.parse(text);
     } catch (error: any) {
       console.error('Quiz generation error:', error);
-      throw new Error(`Failed to generate quiz: ${error.message}`);
+      throw new Error('AI_QUIZ_GENERATION_FAILED');
     }
   },
 };

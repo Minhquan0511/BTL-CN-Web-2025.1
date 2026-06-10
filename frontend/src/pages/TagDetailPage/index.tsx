@@ -11,7 +11,7 @@ import { enrollmentsAPI } from '@/services/api';
 import './styles.css';
 
 interface TagDetailPageProps {
-  navigateTo: (page: Page) => void;
+  navigateTo: (page: Page, data?: any) => void;
   setSelectedCourse: (course: Course) => void;
   currentUser: User | null;
   selectedTag: TagType | null;
@@ -29,7 +29,7 @@ export function TagDetailPage({ navigateTo, setSelectedCourse, currentUser, sele
           const courseIds = res.data.map((e: any) => e.course_id);
           setEnrolledCourseIds(courseIds);
         }
-      }).catch(err => console.log('Could not fetch enrollments'));
+      }).catch(() => { });
     }
   }, [currentUser?.id]);
 
@@ -78,7 +78,7 @@ export function TagDetailPage({ navigateTo, setSelectedCourse, currentUser, sele
           const courseIds = res.data.map((e: any) => e.course_id);
           setEnrolledCourseIds(courseIds);
         }
-      }).catch(err => console.log('Could not fetch enrollments'));
+      }).catch(() => { });
     }
   };
 
@@ -89,12 +89,6 @@ export function TagDetailPage({ navigateTo, setSelectedCourse, currentUser, sele
           <CardContent className="p-12 text-center">
             <Tag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-600">Không tìm thấy chủ đề</p>
-            <Button
-              className="mt-4 bg-[#1E88E5] text-white hover:bg-[#1565C0]"
-              onClick={() => navigateTo('home')}
-            >
-              Quay về trang chủ
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -122,16 +116,6 @@ export function TagDetailPage({ navigateTo, setSelectedCourse, currentUser, sele
 
         {/* Content */}
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          {/* Back Button */}
-          <Button
-            variant="ghost"
-            onClick={() => navigateTo('home')}
-            className="mb-6 text-white hover:bg-white/20"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay về trang chủ
-          </Button>
-
           <div className="max-w-4xl">
             {/* Topic Badge */}
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-white/30">
@@ -246,7 +230,7 @@ export function TagDetailPage({ navigateTo, setSelectedCourse, currentUser, sele
                     course={course}
                     onClick={() => {
                       setSelectedCourse(course);
-                      navigateTo('course-detail');
+                      navigateTo('course-detail', { course });
                     }}
                     currentUserId={currentUser?.id}
                     currentRole={currentUser?.role}

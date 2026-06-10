@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { coursesAPI, sectionsAPI, lessonsAPI, tagsAPI, supabase } from '@/services/api';
-import { getSecureItem, isWebCryptoAvailable, getSecureItemFallback } from '@/utils/secureStorage';
 import { Page, User } from '@/types';
 import { QuizEditor } from '@/components/shared/QuizEditor';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -50,7 +50,7 @@ export function CreateCoursePage({ navigateTo, currentUser }: CreateCoursePagePr
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<Array<{ value: string; label: string }>>([]);
   const [courseOverview, setCourseOverview] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
@@ -88,15 +88,17 @@ export function CreateCoursePage({ navigateTo, currentUser }: CreateCoursePagePr
       try {
         const response = await tagsAPI.getAllTags();
         if (response.success && response.data) {
-          let tagNames = response.data.map((tag: any) => tag.name);
+          let tagOptions = response.data.map((tag: any) => ({
+            value: tag.name,
+            label: tag.name
+          }));
           // Sort tags: "Others" always at the end
-          tagNames = tagNames.sort((a: string, b: string) => {
-            if (a.toLowerCase() === 'others') return 1;
-            if (b.toLowerCase() === 'others') return -1;
-            return a.localeCompare(b);
+          tagOptions = tagOptions.sort((a: { value: string; label: string }, b: { value: string; label: string }) => {
+            if (a.value.toLowerCase() === 'others') return 1;
+            if (b.value.toLowerCase() === 'others') return -1;
+            return a.value.localeCompare(b.value);
           });
-          setAvailableTags(tagNames);
-          console.log('Loaded tags from backend:', tagNames);
+          setAvailableTags(tagOptions);
         }
       } catch (error: any) {
         console.error('Error fetching tags:', error);
@@ -293,14 +295,9 @@ export function CreateCoursePage({ navigateTo, currentUser }: CreateCoursePagePr
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
-      // Get the current auth token from secure storage
-      // Use sync backup first (always available in localStorage)
-      let authToken = getSecureItemFallback('auth_token_sync_backup');
-      
-      // Fallback to trying main token key if backup not found
-      if (!authToken) {
-        authToken = getSecureItemFallback('auth_token');
-      }
+      // Get the current auth token from cookies
+      const { authCookies } = require('@/utils/cookieStorage');
+      const authToken = authCookies.getAuthToken();
 
       if (!authToken) {
         console.error('No auth token found. User must be logged in to upload images.');
@@ -352,7 +349,6 @@ export function CreateCoursePage({ navigateTo, currentUser }: CreateCoursePagePr
         return null;
       }
 
-      console.log('Starting video upload...', { fileName: file.name, size: file.size });
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -375,14 +371,12 @@ export function CreateCoursePage({ navigateTo, currentUser }: CreateCoursePagePr
         return null;
       }
 
-      console.log('Upload successful, data:', data);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('course-videos')
         .getPublicUrl(filePath);
 
-      console.log('Video public URL:', publicUrl);
       toast.success('Upload video thành công!');
       return publicUrl;
     } catch (error: any) {
@@ -451,9 +445,7 @@ export function CreateCoursePage({ navigateTo, currentUser }: CreateCoursePagePr
         // Save tags to course
         if (selectedTags.length > 0) {
           try {
-            console.log('Saving tags:', { courseId, selectedTags });
             const tagResponse = await coursesAPI.addCourseTags(courseId, selectedTags);
-            console.log('Tags saved successfully:', tagResponse);
           } catch (error: any) {
             console.error('Error saving tags:', error);
             console.error('Error details:', {
@@ -525,7 +517,6 @@ export function CreateCoursePage({ navigateTo, currentUser }: CreateCoursePagePr
                 }
               }
             }
-            console.log('Sections and lessons saved successfully');
           } catch (error) {
             console.error('Error saving sections/lessons:', error);
             toast.warning('Khóa học đã tạo nhưng không thể lưu nội dung');
@@ -706,25 +697,19 @@ export function CreateCoursePage({ navigateTo, currentUser }: CreateCoursePagePr
                     )}
 
                     {/* Tag Selection Dropdown */}
-                    <Select
+                    <Combobox
+                      items={availableTags}
                       value=""
                       onValueChange={(value) => {
                         if (value && !selectedTags.includes(value)) {
                           setSelectedTags([...selectedTags, value]);
                         }
                       }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Thêm chủ đề..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableTags.map(tagName => (
-                          <SelectItem key={tagName} value={tagName}>
-                            {tagName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Thêm chủ đề..."
+                      searchPlaceholder="Tìm chủ đề..."
+                      emptyText="Không tìm thấy chủ đề."
+                      className="w-full"
+                    />
                     <p className="text-xs text-gray-500">
                       Chọn các chủ đề phù hợp để học viên dễ tìm kiếm khóa học của bạn
                     </p>

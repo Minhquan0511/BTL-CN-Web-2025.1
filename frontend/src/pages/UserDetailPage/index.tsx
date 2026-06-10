@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { BookOpen, Users, Star, Calendar, Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { CourseListCard } from '@/components/shared/CourseListCard';
@@ -13,7 +13,7 @@ const COURSES_PER_PAGE = 5;
 
 interface UserDetailPageProps {
   user: User;
-  navigateTo: (page: Page) => void;
+  navigateTo: (page: Page, data?: any) => void;
   setSelectedCourse?: (course: Course) => void;
 }
 
@@ -37,12 +37,8 @@ export function UserDetailPage({ user, navigateTo, setSelectedCourse }: UserDeta
       setLoadingCourses(true);
       setCoursesError(null);
       try {
-        const res = await coursesAPI.getAllCourses({ isAdmin: true });
-        // Filter courses by owner_id === user.id (API returns owner_id in snake_case)
-        const filtered = (res.data || []).filter((course: any) => {
-          return course.owner_id === user.id || course.ownerId === user.id;
-        });
-        setUserCourses(filtered);
+        const res = await coursesAPI.getAllCourses({ owner_id: user.id });
+        setUserCourses(res.data || []);
       } catch (e) {
         console.error('Error fetching courses:', e);
         setCoursesError('Không thể tải danh sách khoá học');
@@ -92,17 +88,10 @@ export function UserDetailPage({ user, navigateTo, setSelectedCourse }: UserDeta
             {/* Avatar */}
             <div className="relative mx-auto md:mx-0">
               <Avatar className="w-24 h-24 ring-4 ring-[#1E88E5]/20">
-                {user?.avatar_url || user?.avatar ? (
-                  <img
-                    src={user.avatar_url || user.avatar || '/placeholder-user.jpg'}
-                    alt={getFullName()}
-                    className="w-24 h-24 object-cover rounded-full"
-                  />
-                ) : (
-                  <AvatarFallback className="text-3xl bg-gradient-to-br from-[#1E88E5] to-[#0D47A1] text-white font-bold">
-                    {(getFullName()?.[0] || '?').toUpperCase()}
-                  </AvatarFallback>
-                )}
+                <AvatarImage src={user.avatar_url || user.avatar} className="object-cover" />
+                <AvatarFallback className="text-3xl bg-gradient-to-br from-[#1E88E5] to-[#0D47A1] text-white font-bold">
+                  {(getFullName()?.[0] || '?').toUpperCase()}
+                </AvatarFallback>
               </Avatar>
             </div>
 
@@ -235,10 +224,8 @@ export function UserDetailPage({ user, navigateTo, setSelectedCourse }: UserDeta
                   key={course.id}
                   course={course}
                   onClick={() => {
-                    if (setSelectedCourse) {
-                      setSelectedCourse(course);
-                      navigateTo('course-detail');
-                    }
+                    setSelectedCourse?.(course);
+                    navigateTo('course-detail', { course });
                   }}
                 />
               ))}

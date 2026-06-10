@@ -9,7 +9,6 @@ import { CourseCard } from '@/components/shared/CourseCard';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataPagination } from '@/components/shared/DataPagination';
 import { usePagination } from '@/hooks/usePagination';
-import { mockCourses } from '@/services/mocks';
 import { Course, Page } from '@/types';
 import { AnimatedSection } from '@/utils/animations';
 import { useCoursesQuery } from '@/hooks/useCoursesQuery';
@@ -17,7 +16,7 @@ import { tagsAPI, enrollmentsAPI } from '@/services/api';
 
 
 interface ExplorePageProps {
-  navigateTo: (page: Page) => void;
+  navigateTo: (page: Page, data?: any) => void;
   setSelectedCourse: (course: Course) => void;
   currentUser: any;
 }
@@ -41,7 +40,7 @@ export function ExplorePage({ navigateTo, setSelectedCourse, currentUser }: Expl
           const courseIds = enrollments.map((e: any) => e.course_id);
           setEnrolledCourseIds(courseIds);
         }
-      }).catch(err => console.log('Could not fetch enrollments'));
+      }).catch(() => { });
     }
   }, [currentUser?.id]);
 
@@ -92,7 +91,7 @@ export function ExplorePage({ navigateTo, setSelectedCourse, currentUser }: Expl
           const courseIds = res.data.map((e: any) => e.course_id);
           setEnrolledCourseIds(courseIds);
         }
-      }).catch(err => console.log('Could not fetch enrollments'));
+      }).catch(() => { });
     }
   };
 
@@ -185,7 +184,7 @@ export function ExplorePage({ navigateTo, setSelectedCourse, currentUser }: Expl
                   course={course}
                   onClick={() => {
                     setSelectedCourse(course);
-                    navigateTo('course-detail');
+                    navigateTo('course-detail', { course });
                   }}
                   currentUserId={currentUser?.id}
                   currentRole={currentUser?.role}

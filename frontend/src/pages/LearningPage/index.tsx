@@ -17,7 +17,7 @@ import { sectionsAPI, lessonsAPI, lessonProgressAPI, quizAPI } from '@/services/
 
 interface LearningPageProps {
   course: Course;
-  navigateTo: (page: Page) => void;
+  navigateTo: (page: Page, data?: any) => void;
 }
 
 export function LearningPage({ course, navigateTo }: LearningPageProps) {
@@ -31,7 +31,7 @@ export function LearningPage({ course, navigateTo }: LearningPageProps) {
   const [sidebarWidth, setSidebarWidth] = useState(350);
   const [isResizing, setIsResizing] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(true);
-  const [descriptionHeight, setDescriptionHeight] = useState(300);
+  const [descriptionHeight, setDescriptionHeight] = useState(180);
   const [isResizingDescription, setIsResizingDescription] = useState(false);
   const [resizeStartY, setResizeStartY] = useState(0);
   const [resizeStartHeight, setResizeStartHeight] = useState(0);
@@ -49,19 +49,17 @@ export function LearningPage({ course, navigateTo }: LearningPageProps) {
   const fetchCourseSections = useCallback(async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching sections for course:', course.id);
+
 
       // Fetch user progress FIRST
       let progressMap: Record<string, boolean> = {};
       try {
-        console.log('🔄 Fetching progress for course:', course.id);
         const progressResponse = await lessonProgressAPI.getUserProgress(course.id.toString());
         if (progressResponse.success && progressResponse.data) {
           progressResponse.data.forEach((p: any) => {
             progressMap[p.lesson_id] = p.completed;
           });
           setLessonsProgress(progressMap);
-          console.log('📊 Loaded progress:', progressMap);
         }
       } catch (error: any) {
         console.error('❌ Failed to fetch progress:', error);
@@ -100,7 +98,7 @@ export function LearningPage({ course, navigateTo }: LearningPageProps) {
                     contentText = '';
                   }
                 }
-                
+
                 return {
                   ...lesson,
                   type: lesson.content_type || lesson.type || 'video',
@@ -135,14 +133,6 @@ export function LearningPage({ course, navigateTo }: LearningPageProps) {
 
         // Set first lesson as selected
         if (flatLessons.length > 0) {
-          console.log('Setting first lesson as selected:', flatLessons[0]);
-          console.log('First lesson details:', {
-            id: flatLessons[0].id,
-            title: flatLessons[0].title,
-            type: flatLessons[0].type,
-            youtubeUrl: flatLessons[0].youtubeUrl,
-            pdfUrl: flatLessons[0].pdfUrl
-          });
           setSelectedLesson(flatLessons[0]);
         } else {
           toast.error('Khóa học chưa có bài học nào');
@@ -288,7 +278,7 @@ export function LearningPage({ course, navigateTo }: LearningPageProps) {
       const delta = resizeStartY - e.clientY;
       const newHeight = resizeStartHeight + delta;
 
-      if (newHeight >= 200 && newHeight <= 800) {
+      if (newHeight >= 100 && newHeight <= 600) {
         setDescriptionHeight(newHeight);
       }
     };
@@ -382,8 +372,6 @@ export function LearningPage({ course, navigateTo }: LearningPageProps) {
         // IMPORTANT: Update allLessons to trigger progress bar recalculation
         const flatLessons = updatedSections.flatMap((s: any) => s.lessons);
         setAllLessons(flatLessons);
-
-        console.log('✅ Progress reloaded from backend:', progressMap);
       }
     } catch (error) {
       console.error('❌ Failed to fetch progress:', error);
@@ -469,7 +457,7 @@ export function LearningPage({ course, navigateTo }: LearningPageProps) {
         progress={progress}
         completedLessons={completedLessons}
         totalLessons={allLessons.length}
-        onBack={() => navigateTo('course-detail', course)}
+        onBack={() => navigateTo('course-detail', { course })}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
@@ -520,8 +508,8 @@ export function LearningPage({ course, navigateTo }: LearningPageProps) {
                       <div className="markdown-content">
                         {(() => {
                           try {
-                            const content = typeof selectedLesson.content_text === 'string' 
-                              ? selectedLesson.content_text 
+                            const content = typeof selectedLesson.content_text === 'string'
+                              ? selectedLesson.content_text
                               : '';
                             if (!content) return <p className="text-gray-500">Nội dung trống</p>;
                             return <Markdown children={content} />;
@@ -543,17 +531,26 @@ export function LearningPage({ course, navigateTo }: LearningPageProps) {
             </div>
           )}
 
-          {/* PDF/Quiz Stage - Original flex-1 approach */}
+          {/* PDF/Quiz Stage - Fixed height layout */}
           {(selectedLesson.type === 'pdf' || selectedLesson.type === 'quiz') && (
-            <div className="flex-1 flex flex-col min-h-[50vh] transition-all duration-300">
+            <div className="flex-1 flex flex-col overflow-hidden">
               {selectedLesson.type === 'pdf' && (
-                <div className="flex-1 bg-gray-100 flex items-center justify-center p-2 md:p-4 h-full">
-                  <div className="w-full h-full max-w-[95%] xl:max-w-[90%] bg-white rounded-lg shadow-lg overflow-hidden relative">
+                <div className="flex-1 bg-gray-100 flex items-center justify-center p-2 md:p-4 overflow-hidden">
+                  <div
+                    className="bg-white rounded-lg shadow-lg overflow-hidden relative"
+                    style={{
+                      width: '100%',
+                      maxWidth: '1400px',
+                      height: '100%',
+                      minHeight: '400px'
+                    }}
+                  >
                     {selectedLesson.pdfUrl && selectedLesson.pdfUrl !== '#' ? (
                       <>
                         <iframe
                           src={convertGoogleDriveUrl(selectedLesson.pdfUrl)}
                           className="w-full h-full"
+                          style={{ minHeight: '400px' }}
                           title={selectedLesson.title}
                           allow="autoplay"
                         />

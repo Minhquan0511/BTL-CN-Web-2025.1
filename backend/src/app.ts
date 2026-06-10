@@ -1,5 +1,6 @@
 import express, { Express } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { env } from './config/env';
@@ -10,6 +11,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 
 const app: Express = express();
+app.set('trust proxy', 1); // Trust first proxy (Nginx)
 
 // ============= DATABASE CONNECTION TEST =============
 (async () => {
@@ -45,9 +47,10 @@ app.use(helmet({
 }));
 
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true })); // CORS
+app.use(cookieParser()); // Parse cookies
 app.use(morgan('dev')); // Logging
-app.use(express.json({ limit: '10mb' })); // Parse JSON bodies with 10MB limit for base64 images
-app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Parse URL-encoded bodies with 10MB limit
+app.use(express.json({ limit: '50mb' })); // Parse JSON bodies
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Parse URL-encoded bodies
 
 // Additional security middleware: Disable powered-by header
 app.disable('x-powered-by');
@@ -65,7 +68,7 @@ app.get('/', (req, res) => {
 // ============= ROUTES =============
 app.use('/api', routes);
 
-// ============= ERROR HANDLERS =============
+// ============ ERROR HANDLERS ============
 app.use(notFoundHandler); // 404 handler
 app.use(errorHandler); // Global error handler
 

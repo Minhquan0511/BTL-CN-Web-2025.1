@@ -13,7 +13,7 @@ import { Course, Page } from '@/types';
 import { PageHeader } from '@/components/shared/PageHeader';
 
 interface ApproveCoursesPageProps {
-  navigateTo: (page: Page) => void;
+  navigateTo: (page: Page, data?: any) => void;
   setSelectedCourse: (course: Course) => void;
 }
 
@@ -86,10 +86,6 @@ export function ApproveCoursesPage({ navigateTo, setSelectedCourse }: ApproveCou
         icon={<FileCheck className="w-8 h-8" />}
         title="Duyệt khóa học"
         description="Xem xét và phê duyệt các khóa học chờ duyệt"
-        backButton={{
-          label: 'Quay về Dashboard',
-          onClick: () => navigateTo('admin-dashboard'),
-        }}
       />
 
       {/* Pending Courses Grid */}
@@ -107,7 +103,7 @@ export function ApproveCoursesPage({ navigateTo, setSelectedCourse }: ApproveCou
                 course={course}
                 onClick={() => {
                   setSelectedCourse(course);
-                  navigateTo('course-detail');
+                  navigateTo('course-detail', { course });
                 }}
               />
               <div className="mt-3 flex gap-2">

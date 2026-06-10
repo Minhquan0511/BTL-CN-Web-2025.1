@@ -11,25 +11,27 @@ export const notificationsAPI = {
 // -----------------------------
 export const usersAPI = {
   getAllUsers: () => api.get('/users').then(res => res.data),
+  getUserById: (id: string) => api.get(`/users/${id}`).then(res => res.data),
   delete: (id: string) => api.delete(`/users/${id}`).then(res => res.data),
 };
 import axios, { AxiosInstance } from 'axios';
 import { createClient } from '@supabase/supabase-js';
-import { getSecureItem, setSecureItem, removeSecureItem, clearSecureStorage, isWebCryptoAvailable, getSecureItemFallback, setSecureItemFallback, removeSecureItem as removeSecureItemUtil, getAuthTokenAsync, getUserIdAsync, getSecureItemFast, setSecureItemFast } from '@/utils/secureStorage';
+import { authCookies } from '@/utils/cookieStorage';
 
 // Environment variables 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://edulearn.id.vn/api';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('Missing Supabase environment variables! Check your .env file.');
 }
 
 // Create Supabase client for direct database queries (e.g., user profiles)
+// NOTE: persistSession is false because we're using cookies for auth persistence
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    persistSession: true,
+    persistSession: false, // We use cookies instead of localStorage
     autoRefreshToken: true,
   }
 });
@@ -37,55 +39,24 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // -----------------------------
 // Axios instance
 // -----------------------------
-// Create axios instance with token
+// Create axios instance with credentials enabled (for cookies)
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Enable sending cookies with requests
 });
 
-// -----------------------------
-// Auth token helpers
-// -----------------------------
-const getAuthToken = (): string | null => {
-  // Try secure storage with fallback
-  return getSecureItemFallback('auth_token');
-};
-
-const setAuthToken = async (token: string) => {
-  if (isWebCryptoAvailable()) {
-    await setSecureItem('auth_token', token);
-  } else {
-    setSecureItemFallback('auth_token', token);
-  }
-};
-
-const clearAuthToken = () => {
-  removeSecureItem('auth_token');
-  removeSecureItem('user_id');
-  removeSecureItem('user_data');
-  clearSecureStorage();
-};
-
-// Axios request interceptor to attach token
-// Note: Uses sync fallback for better interceptor compatibility
+// Axios request interceptor to attach token from cookie
 api.interceptors.request.use((config) => {
   try {
-    // Try to get token from sync backup first (for interceptor compatibility)
-    let token = getSecureItemFallback('auth_token_sync_backup');
-    
-    // Fallback to non-backup if needed
-    if (!token) {
-      token = getSecureItemFallback('auth_token');
-    }
-    
+    const token = authCookies.getAuthToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
   } catch (error) {
-    // Log error but don't fail the request
-    console.error('Error retrieving auth token from interceptor:', error);
+    console.error('Error retrieving auth token from cookie:', error);
   }
   return config;
 });
@@ -95,7 +66,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      clearAuthToken();
+      authCookies.clearAll();
       // Optional: redirect to login
       // window.location.href = '/login';
     }
@@ -163,14 +134,10 @@ export const authAPI = {
     const response = await api.post<AuthResponse>('/auth/login', data);
 
     if (response.data.success) {
-      // Store auth token and user ID securely (encrypted)
-      if (isWebCryptoAvailable()) {
-        await setSecureItem('auth_token', response.data.data.session.access_token);
-        await setSecureItem('user_id', response.data.data.user.id);
-      } else {
-        setSecureItemFallback('auth_token', response.data.data.session.access_token);
-        setSecureItemFallback('user_id', response.data.data.user.id);
-      }
+      // Store auth token and user ID in cookies
+      authCookies.setAuthToken(response.data.data.session.access_token);
+      authCookies.setUserId(response.data.data.user.id);
+      authCookies.setUserData(response.data.data.user);
     }
 
     return response.data;
@@ -181,14 +148,10 @@ export const authAPI = {
     const response = await api.post<AuthResponse>('/auth/google', { token });
 
     if (response.data.success) {
-      // Store auth token and user ID securely (encrypted)
-      if (isWebCryptoAvailable()) {
-        await setSecureItem('auth_token', response.data.data.session.access_token);
-        await setSecureItem('user_id', response.data.data.user.id);
-      } else {
-        setSecureItemFallback('auth_token', response.data.data.session.access_token);
-        setSecureItemFallback('user_id', response.data.data.user.id);
-      }
+      // Store auth token and user ID in cookies
+      authCookies.setAuthToken(response.data.data.session.access_token);
+      authCookies.setUserId(response.data.data.user.id);
+      authCookies.setUserData(response.data.data.user);
     }
 
     return response.data;
@@ -198,7 +161,7 @@ export const authAPI = {
     try {
       await api.post('/auth/logout');
     } finally {
-      clearAuthToken();
+      authCookies.clearAll();
     }
   },
 
@@ -213,31 +176,19 @@ export const authAPI = {
   },
 
   getStoredUser() {
-    const userData = getSecureItemFallback('user_data');
-    if (!userData) {
-      console.log('[getStoredUser] user_data not found in secure storage');
-      return null;
-    }
-    try {
-      const user = JSON.parse(userData);
-      console.log('[getStoredUser] user loaded from secure storage:', user);
-      return user;
-    } catch (e) {
-      console.error('[getStoredUser] Failed to parse user_data:', e, userData);
-      return null;
-    }
+    return authCookies.getUserData();
   },
 
   getStoredToken() {
-    return getAuthToken();
+    return authCookies.getAuthToken();
   },
 
   isAuthenticated() {
-    return !!getAuthToken();
+    return !!authCookies.getAuthToken();
   },
 
   logout_local() {
-    clearAuthToken();
+    authCookies.clearAll();
   },
 };
 
@@ -248,11 +199,10 @@ export const adminAPI = {
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/admin/login', data);
     if (response.data.success) {
-      // Store auth data immediately (fast sync-only, no expensive encryption)
-      setSecureItemFallback('auth_token', response.data.data.session?.access_token || '');
-      setSecureItemFallback('user_id', response.data.data.user.id);
-      // Store user data (fast - uses obfuscation only)
-      setSecureItemFast('user_data', JSON.stringify(response.data.data.user));
+      // Store auth data in cookies
+      authCookies.setAuthToken(response.data.data.session?.access_token || '');
+      authCookies.setUserId(response.data.data.user.id);
+      authCookies.setUserData(response.data.data.user);
     }
     return response.data;
   },
@@ -287,6 +237,15 @@ export const tagsAPI = {
   createTag: (data: any) => api.post('/tags', data).then(res => res.data),
   updateTag: (id: string, data: any) => api.patch(`/tags/${id}`, data).then(res => res.data),
   deleteTag: (id: string) => api.delete(`/tags/${id}`).then(res => res.data),
+  uploadTagImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post('/tags/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(res => res.data);
+  },
 };
 
 // -----------------------------

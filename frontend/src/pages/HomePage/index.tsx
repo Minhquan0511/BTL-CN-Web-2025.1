@@ -2,7 +2,7 @@ import { Search, Plus, TrendingUp, BookOpen, Users, Tag, Sparkles } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CourseCard } from '@/components/shared/CourseCard';
-// import { mockCourses, mockTags } from '@/services/mocks';
+
 import { coursesAPI, tagsAPI } from '@/services/api';
 import { Course, User, Page, Tag as TagType } from '@/types';
 import { AnimatedSection } from '@/utils/animations';
@@ -11,13 +11,11 @@ import { Snowfall } from '@/components/christmas/Snowfall';
 import { ChristmasCardWrapper } from '@/components/christmas/ChristmasCardWrapper';
 import { ChristmasHeroSection } from '@/components/christmas/ChristmasHeroSection';
 import './styles.css';
-import Lottie from 'lottie-react';
-import hatAnimation from '@/components/christmas/Christmas hat.json';
 import { useState, useEffect } from 'react';
 import { enrollmentsAPI } from '@/services/api';
 
 interface HomePageProps {
-  navigateTo: (page: Page) => void;
+  navigateTo: (page: Page, data?: any) => void;
   setSelectedCourse: (course: Course) => void;
   currentUser: User | null;
   setSelectedTag: (tag: TagType) => void;
@@ -84,7 +82,7 @@ export function HomePage({ navigateTo, setSelectedCourse, currentUser, setSelect
           const courseIds = res.data.map((e: any) => e.course_id);
           setEnrolledCourseIds(courseIds);
         }
-      }).catch(err => console.log('Could not fetch enrollments'));
+      }).catch(() => { });
     }
   }, [currentUser?.id]);
 
@@ -96,7 +94,7 @@ export function HomePage({ navigateTo, setSelectedCourse, currentUser, setSelect
           const courseIds = res.data.map((e: any) => e.course_id);
           setEnrolledCourseIds(courseIds);
         }
-      }).catch(err => console.log('Could not fetch enrollments'));
+      }).catch(() => { });
     }
   };
 
@@ -130,13 +128,7 @@ export function HomePage({ navigateTo, setSelectedCourse, currentUser, setSelect
           <div className="max-w-4xl">
             {/* Main Heading with Gradient Effect */}
             <h1 className="home-hero-title mb-6 leading-tight">
-              Học tập không giới hạ
-              <span className="relative inline-block">
-                n
-                <div className="absolute w-24 h-24 pointer-events-none z-10" style={{ top: '5px', left: '-22px', transform: 'rotate(-15deg)' }}>
-                  <Lottie animationData={hatAnimation} loop={true} />
-                </div>
-              </span>
+              Học tập không giới hạn
               <br />
               <span className="home-hero-title-accent">
                 cùng EduLearn
@@ -221,22 +213,22 @@ export function HomePage({ navigateTo, setSelectedCourse, currentUser, setSelect
               .sort((a, b) => (b.students || 0) - (a.students || 0))
               .slice(0, 6)
               .map((course, index) => (
-              <AnimatedSection key={course.id} animation="fade-up" delay={index * 100} className="h-full">
-                <ChristmasCardWrapper>
-                  <CourseCard
-                    course={course}
-                    onClick={() => {
-                      setSelectedCourse(course);
-                      navigateTo('course-detail');
-                    }}
-                    currentUserId={currentUser?.id}
-                    currentRole={currentUser?.role}
-                    isEnrolled={enrolledCourseIds.includes(course.id)}
-                    onJoinSuccess={handleJoinSuccess}
-                  />
-                </ChristmasCardWrapper>
-              </AnimatedSection>
-            ))
+                <AnimatedSection key={course.id} animation="fade-up" delay={index * 100} className="h-full">
+                  <ChristmasCardWrapper>
+                    <CourseCard
+                      course={course}
+                      onClick={() => {
+                        setSelectedCourse(course);
+                        navigateTo('course-detail', { course });
+                      }}
+                      currentUserId={currentUser?.id}
+                      currentRole={currentUser?.role}
+                      isEnrolled={enrolledCourseIds.includes(course.id)}
+                      onJoinSuccess={handleJoinSuccess}
+                    />
+                  </ChristmasCardWrapper>
+                </AnimatedSection>
+              ))
           )}
         </div>
       </div >
@@ -267,7 +259,7 @@ export function HomePage({ navigateTo, setSelectedCourse, currentUser, setSelect
                     className="home-category-card cursor-pointer"
                     onClick={() => {
                       setSelectedTag(tag);
-                      navigateTo('tag-detail');
+                      navigateTo('tag-detail', { tag });
                     }}
                   >
                     <CardContent className="p-6 text-center">

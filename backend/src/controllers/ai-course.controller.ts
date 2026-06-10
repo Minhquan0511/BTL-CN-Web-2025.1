@@ -9,6 +9,42 @@ interface GenerateCourseRequest {
     goal: string;
 }
 
+// Helper function to convert error codes to user-friendly messages
+const getUserFriendlyErrorMessage = (error: any): string => {
+    const errorMessage = error?.message || '';
+
+    // Map error codes to user-friendly messages
+    const errorMessages: Record<string, string> = {
+        'AI_GENERATION_FAILED': 'Hệ thống AI đang quá tải. Vui lòng thử lại sau ít phút.',
+        'AI_RESPONSE_INVALID': 'AI không thể tạo nội dung hợp lệ. Vui lòng thử lại với chủ đề khác.',
+        'AI_QUIZ_GENERATION_FAILED': 'Không thể tạo câu hỏi quiz. Vui lòng thử lại sau.',
+    };
+
+    // Check for specific error codes
+    for (const [code, message] of Object.entries(errorMessages)) {
+        if (errorMessage.includes(code)) {
+            return message;
+        }
+    }
+
+    // Check for common error patterns
+    if (errorMessage.includes('quota') || errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+        return 'Hệ thống đang quá tải. Vui lòng thử lại sau ít phút.';
+    }
+    if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+        return 'Yêu cầu bị timeout. Vui lòng thử lại.';
+    }
+    if (errorMessage.includes('network') || errorMessage.includes('ECONNREFUSED')) {
+        return 'Lỗi kết nối mạng. Vui lòng kiểm tra kết nối và thử lại.';
+    }
+    if (errorMessage.includes('JSON') || errorMessage.includes('parse')) {
+        return 'AI không thể tạo nội dung phù hợp. Vui lòng thử lại với mô tả khác.';
+    }
+
+    // Default friendly message
+    return 'Đã xảy ra lỗi khi tạo lộ trình. Vui lòng thử lại sau.';
+};
+
 export const aiCourseController = {
     /**
      * Preview a course without saving (for user review)
@@ -24,7 +60,7 @@ export const aiCourseController = {
                 });
             }
 
-            console.log(`Generating AI course preview: ${topic} - ${level} - ${goal}`);
+
 
             // Generate course outline using AI
             const courseOutline = await aiService.generateCourseOutline({
@@ -36,6 +72,7 @@ export const aiCourseController = {
             // Search YouTube videos for video lessons
             for (const section of courseOutline.sections) {
                 for (const lesson of section.lessons) {
+
                     if (lesson.type === 'video' && lesson.searchQuery) {
                         try {
                             const video = await youtubeService.getFirstVideo(lesson.searchQuery);
@@ -59,7 +96,7 @@ export const aiCourseController = {
             console.error('Preview course error:', error);
             return res.status(500).json({
                 success: false,
-                message: error.message || 'Failed to generate course preview',
+                message: getUserFriendlyErrorMessage(error),
             });
         }
     },
@@ -91,7 +128,7 @@ export const aiCourseController = {
                     });
                 }
 
-                console.log(`Generating AI course: ${topic} - ${level} - ${goal}`);
+
                 courseOutline = await aiService.generateCourseOutline({ topic, level, goal });
 
                 // Search YouTube videos for video lessons
@@ -110,7 +147,7 @@ export const aiCourseController = {
                     }
                 }
             }
-                  // Find the first video thumbnail to use as course image
+            // Find the first video thumbnail to use as course image
             let courseImageUrl = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80'; // Default placeholder
             for (const section of courseOutline.sections) {
                 for (const lesson of section.lessons) {
@@ -192,14 +229,7 @@ export const aiCourseController = {
                         continue;
                     }
 
-                    // Debug: Log quiz data
-                    if (lessonData.type === 'quiz') {
-                        console.log(`Quiz lesson "${lessonData.title}":`, {
-                            hasQuizQuestions: !!lessonData.quizQuestions,
-                            quizQuestionsCount: lessonData.quizQuestions?.length || 0,
-                            quizQuestions: lessonData.quizQuestions
-                        });
-                    }
+
 
                     // Create quiz questions if it's a quiz lesson
                     if (lessonData.type === 'quiz' && lessonData.quizQuestions && lessonData.quizQuestions.length > 0) {
@@ -224,7 +254,7 @@ export const aiCourseController = {
                                 continue;
                             }
 
-                            console.log(`Created question: ${q.question.substring(0, 50)}...`);
+
 
                             // Create answers using admin client
                             for (let aIndex = 0; aIndex < q.options.length; aIndex++) {
@@ -288,7 +318,7 @@ export const aiCourseController = {
             console.error('Generate course error:', error);
             return res.status(500).json({
                 success: false,
-                message: error.message || 'Failed to generate course',
+                message: getUserFriendlyErrorMessage(error),
             });
         }
     },

@@ -16,7 +16,7 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 const ITEMS_PER_PAGE = 6;
 
 interface MyCoursesPageProps {
-  navigateTo: (page: Page) => void;
+  navigateTo: (page: Page, data?: any) => void;
   setSelectedCourse: (course: Course) => void;
   currentUser: User;
 }
@@ -58,8 +58,11 @@ export function MyCoursesPage({ navigateTo, setSelectedCourse, currentUser }: My
               description: course.description || '',
               image: course.image_url || '/placeholder-course.jpg',
               ownerId: course.owner_id,
-              ownerName: course.owner?.full_name || currentUser.name,
-              ownerAvatar: course.owner?.avatar_url || currentUser.avatar,
+              owner: course.owner || {
+                id: currentUser.id,
+                full_name: currentUser.full_name || currentUser.fullName || currentUser.name,
+                avatar_url: currentUser.avatar_url || currentUser.avatar
+              },
               tags: course.tags?.map((t: any) => t.tag?.name).filter(Boolean) || [],
               visibility: course.visibility as 'public' | 'private',
               status: course.status,
@@ -78,7 +81,7 @@ export function MyCoursesPage({ navigateTo, setSelectedCourse, currentUser }: My
         }
       } catch (error) {
         console.error('Failed to fetch created courses:', error);
-        toast.error('Không thể tải khóa học của bạn');
+        // Không hiển thị toast error vì danh sách trống là bình thường
       } finally {
         setIsLoadingCreated(false);
       }
@@ -104,8 +107,7 @@ export function MyCoursesPage({ navigateTo, setSelectedCourse, currentUser }: My
               description: enrollment.course.description || '',
               image: enrollment.course.image_url || '/placeholder-course.jpg',
               ownerId: enrollment.course.owner_id,
-              ownerName: enrollment.course.owner?.full_name || 'Unknown',
-              ownerAvatar: enrollment.course.owner?.avatar_url || '',
+              owner: enrollment.course.owner,
               tags: enrollment.course.tags?.map((t: any) => t.tag?.name).filter(Boolean) || [],
               visibility: enrollment.course.visibility as 'public' | 'private',
               status: enrollment.course.status,
@@ -122,7 +124,7 @@ export function MyCoursesPage({ navigateTo, setSelectedCourse, currentUser }: My
         }
       } catch (error) {
         console.error('Failed to fetch enrolled courses:', error);
-        toast.error('Không thể tải khóa học đang học');
+        // Không hiển thị toast error vì danh sách trống là bình thường
       } finally {
         setIsLoadingEnrolled(false);
       }
@@ -338,7 +340,7 @@ export function MyCoursesPage({ navigateTo, setSelectedCourse, currentUser }: My
                       showProgress={true}
                       onClick={() => {
                         setSelectedCourse(course);
-                        navigateTo('course-detail');
+                        navigateTo('course-detail', { course });
                       }}
                       action={
                         <AlertDialog>

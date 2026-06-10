@@ -6,13 +6,11 @@ import { httpStatus } from '@utils/httpStatus';
 
 export const EnrollmentController = {
   async leaveCourse(req: Request, res: Response) {
-      console.log('==> [leaveCourse] Controller called', req.method, req.originalUrl);
     try {
       const { id } = req.params;
       const userId = req.user!.id;
 
       const enrollment = await EnrollmentModel.findById(id);
-      console.log('[leaveCourse] userId:', userId, '| enrollmentId:', id, '| enrollment.user_id:', enrollment?.user_id);
       if (!enrollment) {
         return res.status(httpStatus.NOT_FOUND).json({
           success: false,
@@ -31,7 +29,6 @@ export const EnrollmentController = {
 
       // Delete enrollment
       const deleteResult = await EnrollmentModel.deleteByUser(id, userId);
-      console.log('[leaveCourse] Delete result:', deleteResult);
 
       res.status(204).send();
     } catch (error: any) {
@@ -70,7 +67,7 @@ export const EnrollmentController = {
               enrollment.course.owner = ownerProfile;
             }
           } catch (err) {
-            console.log('Could not fetch owner profile for:', enrollment.course.owner_id);
+            // Owner profile not found
           }
         }
         // Students count
@@ -201,12 +198,6 @@ export const EnrollmentController = {
         }
       }
 
-      console.log('Get course enrollments:', {
-        courseId,
-        totalEnrollments: enrollments.length,
-        statuses: enrollments.map(e => e.status)
-      });
-
       res.json({
         success: true,
         data: enrollments,
@@ -228,6 +219,7 @@ export const EnrollmentController = {
 
       // Check if already enrolled
       const existing = await EnrollmentModel.findByUserId(userId);
+
       if (existing.some((e: any) => e.course_id === course_id)) {
         return res.status(httpStatus.BAD_REQUEST).json({
           success: false,
@@ -236,11 +228,18 @@ export const EnrollmentController = {
       }
 
       // Check if course is public to auto-approve enrollment
-      const { data: course } = await supabaseAdmin
+      const { data: course, error: courseError } = await supabaseAdmin
         .from('courses')
         .select('visibility')
         .eq('id', course_id)
         .single();
+
+      if (courseError) {
+        return res.status(httpStatus.NOT_FOUND).json({
+          success: false,
+          message: 'Course not found',
+        });
+      }
 
       const isPublicCourse = course?.visibility === 'public';
 
@@ -289,7 +288,7 @@ export const EnrollmentController = {
         message: isPublicCourse ? 'Bạn đã tham gia khoá học thành công!' : 'Đã gửi yêu cầu đăng ký khoá học',
       });
     } catch (error: any) {
-      console.error('Create enrollment error:', error);
+      console.error('[Enrollment.create] ERROR:', error);
       res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: 'Failed to create enrollment',
@@ -537,18 +536,12 @@ export const EnrollmentController = {
         .single();
 
       if (courseError || !course) {
-        console.log('Course lookup error:', courseError);
+
         return res.status(httpStatus.NOT_FOUND).json({
           success: false,
           message: 'Course not found',
         });
       }
-
-      console.log('Course owner check:', {
-        courseOwnerId: course.owner_id,
-        requestUserId: userId,
-        match: course.owner_id === userId
-      });
 
       if (course.owner_id !== userId) {
         return res.status(httpStatus.FORBIDDEN).json({
